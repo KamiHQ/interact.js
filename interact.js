@@ -245,8 +245,11 @@
 
         // Does the browser support PointerEvents
         // Avoid PointerEvent bugs introduced in Chrome 55
-        supportsPointerEvent = PointerEvent && !/Chrome/.test(navigator.userAgent),
+        //supportsPointerEvent = PointerEvent && !/Chrome/.test(navigator.userAgent),
 
+        // Kami: originally supportsPointerEvent events was always false for chrome but since chrome 55, pointer events have been fixed
+        supportsPointerEvent = !!PointerEvent,
+        
         // Less Precision with touch input
         margin = supportsTouch || supportsPointerEvent? 20: 10,
 
