@@ -2762,6 +2762,15 @@
             this.holdTimers .splice(index, 1);
         },
 
+                /* KAMI: interactJS reset pointer state */
+        resetPointerState : function(){
+            this.pointers       = [];
+            this.pointerIds     = [];
+            this.downTargets    = [];
+            this.downTimes      = [];
+            this.holdTimers     = [];
+        },
+
         recordPointer: function (pointer) {
             var index = this.mouse? 0: indexOf(this.pointerIds, getPointerId(pointer));
 
@@ -3277,7 +3286,6 @@
             // create a new interaction for mouse
             interaction = new Interaction();
             interaction.mouse = true;
-
             return interaction;
         }
 
@@ -3300,11 +3308,10 @@
             if ((!interaction.prepared.name || (interaction.target.options.gesture.enabled))
                 && !interaction.interacting()
                 && !(!mouseEvent && interaction.mouse)) {
-
                 return interaction;
             }
         }
-
+        
         return new Interaction();
     }
 
@@ -3322,7 +3329,6 @@
 
                 for (i = 0; i < event.changedTouches.length; i++) {
                     var pointer = event.changedTouches[i];
-
                     interaction = getInteractionFromPointer(pointer, event.type, eventTarget);
 
                     if (!interaction) { continue; }
@@ -3347,7 +3353,6 @@
                         return;
                     }
                 }
-
                 interaction = getInteractionFromPointer(event, event.type, eventTarget);
 
                 if (!interaction) { return; }
@@ -5606,6 +5611,12 @@
 
             prefixedPropREs       : prefixedPropREs
         };
+    };
+
+    // Kami: expose the method to clear touch pointers
+    interact.resetPointerState = function(){
+        var interaction = interactions[0] || new Interaction();
+        interaction.resetPointerState();
     };
 
     // expose the functions used to calculate multi-touch properties
