@@ -36,6 +36,8 @@
         HTMLElement        = window.HTMLElement        || window.Element,
 
         PointerEvent = (window.PointerEvent || window.MSPointerEvent),
+        // window.noNativePointerEvents will be injected for apps with Polyfill
+        PointerEvent = window.noNativePointerEvents ? null : PointerEvent,
         pEventTypes,
 
         hypot = Math.hypot || function (x, y) { return Math.sqrt(x * x + y * y); },
