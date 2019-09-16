@@ -3106,6 +3106,20 @@
 
             rect = restriction;
 
+            if(this.resizing && restriction) {
+             if(this.startOffset.left > this.startOffset.right) {
+               page.x += this.startOffset.right;
+             } else {
+               page.x -= this.startOffset.left;
+             }
+
+             if(this.startOffset.top > this.startOffset.bottom) {
+               page.y += this.startOffset.bottom;
+             } else {
+               page.y -= this.startOffset.top;
+             }
+           }
+
             if (!restriction) {
                 restrictedX = page.x;
                 restrictedY = page.y;
