@@ -1660,6 +1660,7 @@
                 width, height;
 
             if (rect) {
+                this.startRect = rect;
                 this.startOffset.left = this.startCoords.page.x - rect.left;
                 this.startOffset.top  = this.startCoords.page.y - rect.top;
 
@@ -3107,6 +3108,11 @@
             rect = restriction;
 
             if(this.resizing && restriction) {
+              this.startOffset.left = Math.max(this.startOffset.left, restriction.left - this.startRect.left);
+              this.startOffset.right = Math.max(this.startOffset.right, this.startRect.right - restriction.right);
+              this.startOffset.top = Math.max(this.startOffset.top, restriction.top - this.startRect.top);
+              this.startOffset.bottom = Math.max(this.startOffset.bottom, this.startRect.bottom - restriction.bottom);
+
              if(this.startOffset.left > this.startOffset.right) {
                page.x += this.startOffset.right;
              } else {
