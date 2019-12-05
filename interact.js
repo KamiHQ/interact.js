@@ -609,6 +609,10 @@
     }
 
     function setEventXY (targetObj, pointers, interaction) {
+        if (pointers.length == 0) {
+            return;
+        }
+
         var pointer = (pointers.length > 1
                        ? pointerAverage(pointers)
                        : pointers[0]);
