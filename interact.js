@@ -199,7 +199,7 @@
                 else {
                   vx = vy = options.speed
                 }
- 
+
                 sx = vx * dtx;
                 sy = vy * dty;
 
@@ -251,7 +251,7 @@
 
         // Kami: originally supportsPointerEvent events was always false for chrome but since chrome 55, pointer events have been fixed
         supportsPointerEvent = !!PointerEvent,
-        
+
         // Less Precision with touch input
         margin = supportsTouch || supportsPointerEvent? 20: 10,
 
@@ -2484,8 +2484,8 @@
             // get dropzones and their elements that could receive the draggable
             var possibleDrops = this.collectDrops(dragElement, true);
 
-            this.activeDrops.dropzones = possibleDrops.dropzones;
-            this.activeDrops.elements  = possibleDrops.elements;
+            this.activeDrops.dropzones = possibleDrops.dropzones || [];
+            this.activeDrops.elements  = possibleDrops.elements || [];
             this.activeDrops.rects     = [];
 
             for (var i = 0; i < this.activeDrops.dropzones.length; i++) {
@@ -2655,7 +2655,7 @@
                 }
 
                 if (this.dragging) {
-                    this.activeDrops.dropzones = this.activeDrops.elements = this.activeDrops.rects = null;
+                    this.activeDrops.dropzones = this.activeDrops.elements = this.activeDrops.rects = [];
                 }
             }
 
@@ -3337,7 +3337,7 @@
                 return interaction;
             }
         }
-        
+
         return new Interaction();
     }
 
@@ -3509,8 +3509,10 @@
                 this.dy = client.y - interaction.prevEvent.clientY;
             }
             else {
+              if(interaction.prevEvent) {
                 this.dx = page.x - interaction.prevEvent.pageX;
                 this.dy = page.y - interaction.prevEvent.pageY;
+              }
             }
         }
         if (interaction.prevEvent && interaction.prevEvent.detail === 'inertia'
@@ -3582,7 +3584,7 @@
             this.velocityX = 0;
             this.velocityY = 0;
         }
-        else if (phase === 'inertiastart') {
+        else if (phase === 'inertiastart' && interaction.prevEvent) {
             this.timeStamp = interaction.prevEvent.timeStamp;
             this.dt        = interaction.prevEvent.dt;
             this.duration  = interaction.prevEvent.duration;
@@ -3592,7 +3594,11 @@
         }
         else {
             this.timeStamp = new Date().getTime();
-            this.dt        = this.timeStamp - interaction.prevEvent.timeStamp;
+            if (interaction.prevEvent) {
+              this.dt = this.timeStamp - interaction.prevEvent.timeStamp;
+            } else {
+              this.dt = 1;
+            }
             this.duration  = this.timeStamp - interaction.downTimes[0];
 
             if (event instanceof InteractEvent) {
@@ -4526,7 +4532,7 @@
          |     relativePoints: [
          |         { x: 0, y: 0 },  // snap relative to the top left of the element
          |         { x: 1, y: 1 },  // and also to the bottom right
-         |     ],  
+         |     ],
          |
          |     // offset the snap target coordinates
          |     // can be an object with x/y or 'startCoords'
