@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Leak Test - Interact.js</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .test-container {
+            margin-bottom: 20px;
+        }
+        .draggable {
+            width: 100px;
+            height: 100px;
+            background: #29e;
+            color: white;
+            border-radius: 5px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin: 10px;
+            cursor: move;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+        }
+        .info {
+            color: #666;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Memory Leak Test - Interact.js</h1>
+
+    <div class="info">
+        <p>This test verifies the memory leak fix for interact.js.</p>
+        <p><strong>Scenario:</strong> The app stores references to Interactable objects and calls <code>unset()</code> on them when done,
+           expecting <code>unset()</code> to clear internal references to DOM elements and allow garbage collection.</p>
+        <p><strong>The Bug:</strong> Before the fix, <code>unset()</code> didn't adequately clear references - it left DOM element
+           references in the Interactable and its associated Interactions, preventing garbage collection even after calling <code>unset()</code>.</p>
+        <p><strong>The Fix:</strong> <code>unset()</code> now properly destroys interactions and clears element references,
+           allowing garbage collection even when the app retains references to the Interactable objects.</p>
+        <p><strong>Instructions:</strong></p>
+        <ol>
+            <li>Open Chrome DevTools (F12) → Memory tab</li>
+            <li>Take a heap snapshot (baseline)</li>
+            <li>Click "Create Many Elements" several times (creates 100 each)</li>
+            <li>Click "Destroy All Elements" (calls <code>unset()</code> but keeps interactable references)</li>
+            <li>Force garbage collection (DevTools → Performance → 🗑️ icon)</li>
+            <li>Take another heap snapshot and compare</li>
+            <li><strong>WITHOUT FIX:</strong> You'll see detached DOM nodes (leaked) because <code>unset()</code> didn't clear element references</li>
+            <li><strong>WITH FIX:</strong> DOM nodes are properly freed because <code>unset()</code> now clears all references</li>
+            <li>Optional: Click "Clear Interactable References" then GC to verify final cleanup</li>
+        </ol>
+        <p><strong>Note:</strong> interact.debug() creates 1 interaction on first call (pre-existing behavior).</p>
+    </div>
+
+    <div class="test-container">
+        <button onclick="createElements()">Create Many Elements (100)</button>
+        <button onclick="destroyAllElements()">Destroy All Elements</button>
+        <button onclick="clearInteractableRefs()">Clear Interactable References</button>
+        <button onclick="checkInteractions()">Check Interactions Count</button>
+        <button onclick="checkInteractables()">Check Interactables Count</button>
+    </div>
+
+    <div id="status">
+        <strong>Status:</strong> Ready
+    </div>
+
+    <div id="container"></div>
+
+    <script src="../interact.js"></script>
+    <script>
+        let elementCount = 0;
+        let elements = [];
+        let unsetInteractables = []; // Keep references to demonstrate the leak!
+
+        function updateStatus(message) {
+            document.getElementById('status').innerHTML = '<strong>Status:</strong> ' + message;
+        }
+
+        function createElements() {
+            const container = document.getElementById('container');
+            const count = 100;
+
+            for (let i = 0; i < count; i++) {
+                const div = document.createElement('div');
+                div.className = 'draggable';
+                div.textContent = 'Drag ' + (++elementCount);
+                div.id = 'draggable-' + elementCount;
+
+                container.appendChild(div);
+
+                // Make it draggable
+                const interactable = interact(div).draggable({
+                    onstart: function(event) {
+                        console.log('Drag started:', event.target.id);
+                    },
+                    onmove: function(event) {
+                        const target = event.target;
+                        const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
+                        const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+
+                        target.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
+                        target.setAttribute('data-x', x);
+                        target.setAttribute('data-y', y);
+                    },
+                    onend: function(event) {
+                        console.log('Drag ended:', event.target.id);
+                    }
+                });
+
+                elements.push({ element: div, interactable: interactable });
+            }
+
+            updateStatus('Created ' + count + ' elements. Total: ' + elements.length);
+        }
+
+        function destroyAllElements() {
+            const container = document.getElementById('container');
+
+            // Unset all interactables first, but KEEP references to them
+            // This simulates the real-world scenario where the app still holds
+            // references to interactables after calling unset()
+            elements.forEach(function(item) {
+                item.interactable.unset();
+                unsetInteractables.push(item.interactable); // Keep reference!
+            });
+
+            // Remove all elements from DOM
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
+            }
+
+            const count = elements.length;
+            elements = []; // Clear elements but keep unsetInteractables
+
+            updateStatus('Destroyed ' + count + ' elements. DOM cleared. Interactables unset BUT REFERENCED (' + unsetInteractables.length + ' total).');
+        }
+
+        function clearInteractableRefs() {
+            const count = unsetInteractables.length;
+            unsetInteractables = [];
+            updateStatus('Cleared ' + count + ' interactable references. Now GC can reclaim memory (force GC in DevTools).');
+        }
+
+        function checkInteractions() {
+            const debug = interact.debug();
+            const count = debug.interactions.length;
+            // Note: interact.debug() itself creates 1 interaction on first call if none exist
+            // This is pre-existing behavior in interact.js (see line 5638)
+            const message = 'Active interactions: ' + count +
+                ' (1 is from debug(), should stay at 1 after destroy)';
+            updateStatus(message);
+            console.log('Interactions:', debug.interactions);
+        }
+
+        function checkInteractables() {
+            const debug = interact.debug();
+            const count = debug.interactables.length;
+            updateStatus('Active interactables: ' + count + ' (should be 0 after destroy)');
+            console.log('Interactables:', debug.interactables);
+        }
+
+        // Initial status
+        updateStatus('Ready. Click "Create Many Elements" to start testing.');
+    </script>
+</body>
+</html>

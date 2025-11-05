@@ -199,7 +199,7 @@
                 else {
                   vx = vy = options.speed
                 }
- 
+
                 sx = vx * dtx;
                 sy = vy * dty;
 
@@ -251,7 +251,7 @@
 
         // Kami: originally supportsPointerEvent events was always false for chrome but since chrome 55, pointer events have been fixed
         supportsPointerEvent = !!PointerEvent,
-        
+
         // Less Precision with touch input
         margin = supportsTouch || supportsPointerEvent? 20: 10,
 
@@ -2778,6 +2778,54 @@
             this.holdTimers     = [];
         },
 
+        /* Fix for memory leak - clear all references to DOM elements and events */
+        destroy: function () {
+            // Clear downEvent reference
+            this.downEvent = null;
+            this.downPointer = {};
+
+            // Clear event targets
+            this._eventTarget = null;
+            this._curEventTarget = null;
+
+            // Clear the prevEvent which may hold DOM references
+            this.prevEvent = null;
+
+            // Clear target references
+            this.target = null;
+            this.element = null;
+            this.dropTarget = null;
+            this.dropElement = null;
+            this.prevDropTarget = null;
+            this.prevDropElement = null;
+
+            // Clear activeDrops which may hold element references
+            if (this.activeDrops) {
+                this.activeDrops.dropzones = [];
+                this.activeDrops.elements = [];
+                this.activeDrops.rects = [];
+            }
+
+            // Clear matches and matchElements
+            this.matches = [];
+            this.matchElements = [];
+
+            // Clear downTargets which hold DOM element references
+            this.downTargets = [];
+
+            // Clear pointers array
+            this.pointers = [];
+            this.pointerIds = [];
+
+            // Clear inertia status which may hold event references
+            if (this.inertiaStatus) {
+                this.inertiaStatus.startEvent = null;
+            }
+
+            // Clear tap event reference
+            this.prevTap = null;
+        },
+
         recordPointer: function (pointer) {
             var index = this.mouse? 0: indexOf(this.pointerIds, getPointerId(pointer));
 
@@ -3337,7 +3385,7 @@
                 return interaction;
             }
         }
-        
+
         return new Interaction();
     }
 
@@ -4526,7 +4574,7 @@
          |     relativePoints: [
          |         { x: 0, y: 0 },  // snap relative to the top left of the element
          |         { x: 1, y: 1 },  // and also to the bottom right
-         |     ],  
+         |     ],
          |
          |     // offset the snap target coordinates
          |     // can be an object with x/y or 'startCoords'
@@ -5367,7 +5415,22 @@
 
             this.dropzone(false);
 
+            // Fix for memory leak - clean up all interactions using this interactable
+            for (var i = interactions.length - 1; i >= 0; i--) {
+                var interaction = interactions[i];
+
+                if (interaction.target === this) {
+                    interaction.stop();
+                    interaction.destroy();
+                    interactions.splice(i, 1);
+                }
+            }
+
             interactables.splice(indexOf(interactables, this), 1);
+
+            // Clear the element reference to allow garbage collection
+            this._element = null;
+            this._context = null;
 
             return interact;
         }
